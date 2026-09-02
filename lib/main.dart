@@ -12,32 +12,42 @@ class MeuApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: "Minha localização",
-      home: const LocalizacaoPage(),
+      title: 'Distância até em casa',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: const TelaInicial(),
     );
   }
 }
 
-class LocalizacaoPage extends StatefulWidget {
-  const LocalizacaoPage({super.key});
+class TelaInicial extends StatefulWidget {
+  const TelaInicial({super.key});
 
   @override
-  State<LocalizacaoPage> createState() => _LocalizacaoPageState();
+  State<TelaInicial> createState() => _TelaInicialState();
 }
 
-class _LocalizacaoPageState extends State<LocalizacaoPage> {
-  double latitude = 0;
-  double longitude = 0;
+class _TelaInicialState extends State<TelaInicial> {
 
-  Future<void> buscarLocalizacao() async {
-    bool servicoAtivo = await Geolocator.isLocationServiceEnabled();
+  String resultado = "Clique no botão para calcular a distância";
 
-    if (!servicoAtivo) {
-      await Geolocator.openLocationSettings();
+  double latitudeCasa = -21.496633962801006;
+  double longitudeCasa = -47.008506733187374;
+
+  Future<void> calcularDistancia() async {
+
+    bool gpsAtivo = await Geolocator.isLocationServiceEnabled();
+
+    if (!gpsAtivo) {
+      setState(() {
+        resultado = "Ative o GPS!";
+      });
       return;
     }
 
-    LocationPermission permissao = await Geolocator.checkPermission();
+    LocationPermission permissao =
+        await Geolocator.checkPermission();
 
     if (permissao == LocationPermission.denied) {
       permissao = await Geolocator.requestPermission();
@@ -45,68 +55,82 @@ class _LocalizacaoPageState extends State<LocalizacaoPage> {
 
     if (permissao == LocationPermission.denied ||
         permissao == LocationPermission.deniedForever) {
+      setState(() {
+        resultado = "Permissão de localização negada!";
+      });
       return;
     }
 
-    Position posicao = await Geolocator.getCurrentPosition();
+    Position posicaoAtual =
+        await Geolocator.getCurrentPosition();
+
+    double distanciaMetros = Geolocator.distanceBetween(
+      posicaoAtual.latitude,
+      posicaoAtual.longitude,
+      latitudeCasa,
+      longitudeCasa,
+    );
+
+
+    double distanciaKm = distanciaMetros / 1000;
 
     setState(() {
-      latitude = posicao.latitude;
-      longitude = posicao.longitude;
+      resultado =
+          "${distanciaKm.toStringAsFixed(2)} km";
     });
-
-    print('Latitude: $latitude');
-    print('Longitude: $longitude');
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Minha localização"),
+        title: const Text("GPS - Distância até em casa"),
       ),
+
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(20),
+
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
+
             children: [
+
               const Icon(
-                Icons.location_on,
+                Icons.house,
                 size: 80,
-                color: Colors.red,
+                color: Colors.blue,
               ),
 
               const SizedBox(height: 20),
 
               const Text(
-                'Localização atual:',
+                "Distancia entre a escola e minha casa",
+                textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 24,
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
               ),
 
-              const SizedBox(height: 30),
+              const SizedBox(height: 15),
 
               Text(
-                'Latitude: $latitude',
-                style: const TextStyle(fontSize: 18),
+                resultado,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
 
-              const SizedBox(height: 10),
-
-              Text(
-                'Longitude: $longitude',
-                style: const TextStyle(fontSize: 18),
-              ),
-
-              const SizedBox(height: 30),
+              const SizedBox(height: 15),
 
               ElevatedButton(
-                onPressed: buscarLocalizacao,
-                child: const Text('Atualizar Localização'),
+                onPressed: calcularDistancia,
+                child: const Text(
+                  "Calcular distância",
+                  style: TextStyle(fontSize: 18),
+                ),
               ),
             ],
           ),
