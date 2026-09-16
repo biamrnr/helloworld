@@ -1,141 +1,202 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:sensors_plus/sensors_plus.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const AppConsultas());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class AppConsultas extends StatelessWidget {
+  const AppConsultas({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: const SensorPage(),
+      title: 'Agendamento de Consultas',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: const TelaPrincipal(),
     );
   }
 }
 
-class SensorPage extends StatefulWidget {
-  const SensorPage({super.key});
+class Consulta {
+  String paciente;
+  String medico;
+  String especialidade;
+  String data;
+  String horario;
 
-  @override
-  State<SensorPage> createState() => _SensorPageState();
+  Consulta({
+    required this.paciente,
+    required this.medico,
+    required this.especialidade,
+    required this.data,
+    required this.horario,
+  });
 }
 
-class _SensorPageState extends State<SensorPage> {
-  double x = 0;
-  double y = 0;
-  double z = 0;
-
-  // Valores anteriores do acelerômetro
-  double ultimoX = 0;
-  double ultimoY = 0;
-  double ultimoZ = 0;
-
-  // Indica se o celular está sendo movimentado
-  bool movimentando = false;
-
-  // Guarda a conexão com o sensor
-  StreamSubscription? acelerometro;
+class TelaPrincipal extends StatefulWidget {
+  const TelaPrincipal({super.key});
 
   @override
-  void initState() {
-    super.initState();
+  State<TelaPrincipal> createState() => _TelaPrincipalState();
+}
 
-    // Recebe os valores do acelerômetro
-    acelerometro = accelerometerEventStream().listen((event) {
-      // Calcula quanto os valores mudaram
-      double diferencaX = (event.x - ultimoX).abs();
-      double diferencaY = (event.y - ultimoY).abs();
-      double diferencaZ = (event.z - ultimoZ).abs();
+class _TelaPrincipalState extends State<TelaPrincipal> {
+  List<Consulta> consultas = [];
 
-      // Define o limite para considerar que houve movimento
-      bool houveMovimento =
-          diferencaX > 1.5 ||
-          diferencaY > 1.5 ||
-          diferencaZ > 1.5;
+  final AudioPlayer player = AudioPlayer();
 
-      setState(() {
-        x = event.x;
-        y = event.y;
-        z = event.z;
+  void adicionarConsulta() {
+    TextEditingController paciente = TextEditingController();
+    TextEditingController medico = TextEditingController();
+    TextEditingController especialidade = TextEditingController();
+    TextEditingController data = TextEditingController();
+    TextEditingController horario = TextEditingController();
 
-        movimentando = houveMovimento;
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text(
+            "Nova Consulta",
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              children: [
+                TextField(
+                  controller: paciente,
+                  decoration: const InputDecoration(
+                    labelText: "Nome do paciente",
+                  ),
+                ),
+                TextField(
+                  controller: medico,
+                  decoration: const InputDecoration(
+                    labelText: "Nome do médico",
+                  ),
+                ),
+                TextField(
+                  controller: especialidade,
+                  decoration: const InputDecoration(
+                    labelText: "Especialidade",
+                  ),
+                ),
+                TextField(
+                  controller: data,
+                  decoration: const InputDecoration(
+                    labelText: "Data da consulta",
+                  ),
+                ),
+                TextField(
+                  controller: horario,
+                  decoration: const InputDecoration(
+                    labelText: "Horário",
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              child: const Text("Cancelar"),
+              onPressed: () {
+                Navigator.pop(context);
+              },
+            ),
+            ElevatedButton(
+              child: const Text("Salvar"),
+              onPressed: () async {
 
-        // Guarda os valores atuais para comparar na próxima leitura
-        ultimoX = event.x;
-        ultimoY = event.y;
-        ultimoZ = event.z;
-      });
-    });
+                await player.play(
+                  AssetSource('audio/som.mp3'),
+                );
+
+                setState(() {
+                  consultas.add(
+                    Consulta(
+                      paciente: paciente.text,
+                      medico: medico.text,
+                      especialidade: especialidade.text,
+                      data: data.text,
+                      horario: horario.text,
+                    ),
+                  );
+                });
+
+                Navigator.pop(context);
+              },
+            )
+          ],
+        );
+      },
+    );
   }
 
-  @override
-  void dispose() {
-    acelerometro?.cancel();
-    super.dispose();
+  void removerConsulta(int index) {
+    setState(() {
+      consultas.removeAt(index);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Sensor do celular'),
+        title: const Text(
+          "Agendamento de Consultas",
+        ),
+        centerTitle: true,
       ),
-
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              'Acelerômetro',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
+      body: consultas.isEmpty
+          ? const Center(
+              child: Text(
+                "Nenhuma consulta agendada",
+                style: TextStyle(
+                  fontSize: 18,
+                ),
               ),
+            )
+          : ListView.builder(
+              itemCount: consultas.length,
+              itemBuilder: (context, index) {
+                final consulta = consultas[index];
+
+                return Card(
+                  margin: const EdgeInsets.all(10),
+                  child: ListTile(
+                    leading: const Icon(
+                      Icons.medical_services,
+                      color: Colors.blue,
+                    ),
+                    title: Text(
+                      consulta.paciente,
+                    ),
+                    subtitle: Text(
+                      "Médico: ${consulta.medico}\n"
+                      "Especialidade: ${consulta.especialidade}\n"
+                      "Data: ${consulta.data}\n"
+                      "Horário: ${consulta.horario}",
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(
+                        Icons.delete,
+                        color: Colors.red,
+                      ),
+                      onPressed: () {
+                        removerConsulta(index);
+                      },
+                    ),
+                  ),
+                );
+              },
             ),
-
-            const SizedBox(height: 40),
-
-            Text(
-              'X: ${x.toStringAsFixed(2)}',
-              style: const TextStyle(fontSize: 24),
-            ),
-
-            Text(
-              'Y: ${y.toStringAsFixed(2)}',
-              style: const TextStyle(fontSize: 24),
-            ),
-
-            Text(
-              'Z: ${z.toStringAsFixed(2)}',
-              style: const TextStyle(fontSize: 24),
-            ),
-
-            const SizedBox(height: 40),
-
-            // Indica se o celular está parado ou em movimento
-            Text(
-              movimentando ? 'CELULAR EM MOVIMENTO' : 'CELULAR PARADO',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: movimentando ? Colors.red : Colors.green,
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // Altera a informação na tela quando há movimento
-            Icon(
-              movimentando ? Icons.vibration : Icons.phone_android,
-              size: 50,
-              color: movimentando ? Colors.red : Colors.green,
-            ),
-          ],
+      floatingActionButton: FloatingActionButton(
+        onPressed: adicionarConsulta,
+        child: const Icon(
+          Icons.add,
         ),
       ),
     );
